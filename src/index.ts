@@ -16,10 +16,10 @@ const TRANSACTIONS_PER_BATCH = 10
 const NODE_URL = 'https://rpctest.tzbeta.net'
 
 // The contract address for the FA1.2 token.
-const TOKEN_CONTRACT_ADDRESS = 'KT1...'
+const TOKEN_CONTRACT_ADDRESS = 'KT1QVCBsB19crVfgjswLPZZjZZ1CW8CvAwiu'
 
 // How many confirmations to wait for on a transaction before proceeding. */
-const CONFIRMATIONS = 3
+const CONFIRMATIONS = 1
 
 /** End Configuration Options */
 /** You should not need to edit below this line. */
@@ -87,6 +87,7 @@ const main = async () => {
   console.log(
     '> You should CTRL+C the program *NOW* if the numbers do not look correct!',
   )
+  console.log('')
   await Utils.sleep(120)
 
   // Get contract
@@ -96,28 +97,26 @@ const main = async () => {
   const numBatches = Math.ceil(drops.length / TRANSACTIONS_PER_BATCH)
   const batches: Array<Array<AirDrop>> = []
   for (let i = 0; i < drops.length; i++) {
-    const drop = drops[1]
+    const drop = drops[i]
     const batchIndex = i % numBatches
 
     // Initialize a batch if not initialized
-    if (batches.length >= batchIndex) {
-      batches[i] = []
+    if (batches.length <= batchIndex) {
+      batches[batchIndex] = []
     }
 
-    batches[i].push(drop)
+    batches[batchIndex].push(drop)
   }
 
   // Airdrop each batch
   const completedOps: Array<CompletedAirDrop> = []
   for (let i = 0; i < batches.length; i++) {
     try {
-      // TODO(keefertaylor): try / catch.
-
       console.log(`>> Processing batch ${i + 1} of ${batches.length}`)
 
       const batch = batches[i]
       const tx = tezos.contract.batch()
-      for (let j = 0; j < batches.length; j++) {
+      for (let j = 0; j < batch.length; j++) {
         const drop = batch[j]
 
         // TODO(keefertaylor): Presumably this mutates the contract call. TBD.
@@ -137,9 +136,10 @@ const main = async () => {
       )
       await txResult.confirmation(CONFIRMATIONS)
       console.log('>> Confirmed!')
+      console.log('')
 
       // Record results of airdrop
-      for (let j = 0; j < batches.length; j++) {
+      for (let j = 0; j < batch.length; j++) {
         const drop = batch[j]
         completedOps.push({
           address: drop.address,
@@ -150,7 +150,7 @@ const main = async () => {
     } catch (e) {
       console.log(``)
       console.log(`-----------------------------------------------`)
-      console.log(`Unexpected error: ${e}`)
+      console.log(`Unexpected error: ${JSON.stringify(e)}`)
       console.log(`Error occured in batch ${i}`)
       console.log(`Batch ${i} dump:`)
       console.log(JSON.stringify(batches[i]))
@@ -166,7 +166,7 @@ const main = async () => {
   if (fs.existsSync(dropFile)) {
     fs.unlinkSync(dropFile)
   }
-  fs.writeFileSync(dropFile, `address, amount (mutez), operation hash,\n`)
+  fs.writeFileSync(dropFile, `address, amount, operation hash,\n`)
   for (let i = 0; i < completedOps.length; i++) {
     const completedOp = completedOps[i]
 
